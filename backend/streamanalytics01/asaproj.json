@@ -1,0 +1,14 @@
+{
+    "name": "streamanalytics01",
+    "startFile": "Transformation.asaql",
+    "configurations": [
+        {
+            "filePath": "JobConfig.json",
+            "subType": "JobConfig"
+        },
+        {
+            "filePath": "Inputs/aziothub01.json",
+            "subType": "Input"
+        }
+    ]
+}

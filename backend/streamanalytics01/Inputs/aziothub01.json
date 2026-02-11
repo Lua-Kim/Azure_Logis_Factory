@@ -1,0 +1,20 @@
+{
+    "Name": "aziothub01",
+    "Type": "Data Stream",
+    "DataSourceType": "IoT Hub",
+    "IoTHubProperties": {
+        "IotHubNamespace": "aziothub01",
+        "Endpoint": "messages/events",
+        "SharedAccessPolicyName": "iothubowner",
+        "SharedAccessPolicyKey": null,
+        "ConsumerGroupName": "$Default"
+    },
+    "DataSourceCredentialDomain": "5d82ccef-7847-4b2d-944c-4f2629d8e120.StreamAnalystics",
+    "Serialization": {
+        "Type": "Json",
+        "Encoding": "UTF8"
+    },
+    "PartitionKey": "4",
+    "CompressionType": "None",
+    "ScriptType": "Input"
+}

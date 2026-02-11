@@ -1,0 +1,51 @@
+/* [1단계] 공통 데이터 전처리 (InputStream이라는 임시 테이블 생성) */
+WITH InputStream AS (
+    SELECT
+        -- 들어오는 모든 필드 선택
+        center_id,
+        zone_id,       -- 코드 수정해서 추가하셨다고 한 부분
+        line_id,
+        section_id,
+        sensor_id,
+        event_type,
+        value,
+        -- 날짜 변환은 여기서 딱 한 번만 수행 (효율성 UP)
+        CAST(timestamp AS datetime) AS occurred_at
+    FROM
+        [aziothub01]   -- 입력 별칭
+)
+
+/* [2단계] 센서/이동 이벤트 -> azpostgres-output 으로 저장 */
+SELECT
+    center_id,
+    zone_id,
+    line_id,
+    section_id,
+    sensor_id,
+    event_type,
+    value,
+    occurred_at
+INTO
+    [azpostgres-output]  -- 출력 별칭 1
+FROM
+    InputStream
+WHERE
+    event_type IN ('basket_arrival', 'container_move')
+
+/* [3단계] 병목 이벤트 -> azpostgres-output1 으로 저장 */
+SELECT
+    center_id,
+    zone_id,
+    line_id,
+    section_id,
+    sensor_id,
+    occurred_at,
+    value AS duration_sec,  -- value를 duration_sec 컬럼으로 이름 변경
+    '' AS cause,            -- 필요 시 기본값 (빈 문자열)
+    NULL AS affected_basket -- 필요 시 기본값 (NULL)
+INTO
+    [azpostgres-output1] -- 출력 별칭 2
+FROM
+    InputStream
+WHERE
+    event_type = 'bottleneck'
