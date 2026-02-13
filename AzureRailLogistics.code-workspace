@@ -1,11 +1,7 @@
 {
 	"folders": [
 		{
-			"path": "../AzureRailLogistics"
-		},
-		{
-			"name": "streamanalytics01",
-			"path": "../AzureRailLogistics/backend/streamanalytics01"
+			"path": "."
 		}
 	],
 	"settings": {}

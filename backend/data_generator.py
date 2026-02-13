@@ -1,3 +1,4 @@
+import argparse
 import os
 import random
 import time
@@ -7,20 +8,16 @@ import threading
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from azure.iot.device import IoTHubDeviceClient
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # .env 파일 로드
 env_path = os.path.join(os.path.dirname(__file__), '../.env')
 load_dotenv(env_path)
 
-IOT_HUB_DEVICE_CONNECTION_STRING = os.getenv('IOT_HUB_DEVICE_CONNECTION_STRING')
+DB_URL = os.getenv('AZ_POSTGRE_DATABASE_URL')
 
-# IoT Hub 클라이언트 초기화 (전역 세션 유지)
-try:
-    device_client = IoTHubDeviceClient.create_from_connection_string(IOT_HUB_DEVICE_CONNECTION_STRING)
-    device_client.connect()
-except Exception as e:
-    print(f"❌ [초기화 실패] IoT Hub 연결 문자열을 확인하세요: {e}")
-    exit()
+device_client = None
 
 def get_now():
     """현재 시간을 로그 포맷에 맞춰 반환"""
@@ -38,7 +35,7 @@ def create_event(basket_id, event_type, center_id, zone_id, line_id, section_id)
         'zone_id': zone_id,
         'line_id': line_id,
         'section_id': section_id,
-        'sensor_id': random.randint(1, 5),
+        'sensor_id': None,
         'basket_id': basket_id,
         'numeric_value': round(random.uniform(20.0, 25.0), 2),
         'status': 'RUNNING',
@@ -46,21 +43,101 @@ def create_event(basket_id, event_type, center_id, zone_id, line_id, section_id)
         'attributes_json': {"version": "1.4", "mode": "mass_parallel"}
     }
 
-def simulate_single_basket(basket_id):
+
+def load_runtime_config():
+    if not DB_URL:
+        return None
+
+    conn = None
+    try:
+        conn = psycopg2.connect(DB_URL)
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT center_id FROM center ORDER BY center_id")
+            centers = [row["center_id"] for row in cur.fetchall()]
+
+            cur.execute("SELECT zone_id, center_id FROM zone")
+            zones = {}
+            for row in cur.fetchall():
+                zones.setdefault(row["center_id"], []).append(row["zone_id"])
+
+            cur.execute("SELECT line_id, center_id FROM line")
+            lines = {}
+            for row in cur.fetchall():
+                lines.setdefault(row["center_id"], []).append(row["line_id"])
+
+            cur.execute("SELECT section_id, line_id FROM section")
+            sections = {}
+            for row in cur.fetchall():
+                sections.setdefault(row["line_id"], []).append(row["section_id"])
+
+            cur.execute(
+                """
+                SELECT s.sensor_id, sec.section_id
+                FROM sensor s
+                JOIN section sec ON sec.section_id = s.section_id
+                """
+            )
+            sensors = {}
+            for row in cur.fetchall():
+                sensors.setdefault(row["section_id"], []).append(row["sensor_id"])
+
+        if not centers:
+            return None
+
+        return {
+            "centers": centers,
+            "zones": zones,
+            "lines": lines,
+            "sections": sections,
+            "sensors": sensors,
+        }
+    except Exception as e:
+        print(f"❌ [설정 로드 실패] DB 설정을 확인하세요: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+def pick_runtime_path(runtime_config, fixed_center_id=None):
+    if not runtime_config:
+        center_id = fixed_center_id if fixed_center_id is not None else 1
+        return center_id, random.randint(1, 3), random.randint(1, 5), random.randint(1, 10), random.randint(1, 5)
+
+    if fixed_center_id is not None and fixed_center_id in runtime_config["centers"]:
+        center_id = fixed_center_id
+    else:
+        center_id = random.choice(runtime_config["centers"])
+    zone_list = runtime_config["zones"].get(center_id, [1])
+    line_list = runtime_config["lines"].get(center_id, [1])
+
+    zone_id = random.choice(zone_list) if zone_list else 1
+    line_id = random.choice(line_list) if line_list else 1
+
+    section_list = runtime_config["sections"].get(line_id, [1])
+    section_id = random.choice(section_list) if section_list else 1
+
+    sensor_list = runtime_config["sensors"].get(section_id, [])
+    sensor_id = random.choice(sensor_list) if sensor_list else None
+
+    return center_id, zone_id, line_id, section_id, sensor_id
+
+def simulate_single_basket(basket_id, runtime_config, fixed_center_id=None):
     """
     한 개의 바스켓이 특정 경로를 통과하는 독립적인 흐름 시뮬레이션
     """
-    # 전제 조건: 다양한 구역(Zone)과 라인(Line) 시뮬레이션
-    center_id = 1 
-    zone_id = random.randint(1, 3)    
-    line_id = random.randint(1, 5)    
-    section_id = random.randint(1, 10) 
+    # 설정 데이터 기반으로 유효한 경로 선택
+    center_id, zone_id, line_id, section_id, sensor_id = pick_runtime_path(
+        runtime_config,
+        fixed_center_id
+    )
     
     loc_str = f"C{center_id}-Z{zone_id}-L{line_id}-S{section_id}"
 
     try:
         # 1. ARRIVAL 전송 (진입)
         arrival = create_event(basket_id, 'ARRIVAL', center_id, zone_id, line_id, section_id)
+        arrival['sensor_id'] = sensor_id if sensor_id is not None else random.randint(1, 5)
         device_client.send_message(json.dumps(arrival))
         print(f"[{get_now()}] 🔵 [진입 보고] {loc_str} | 바스켓 #{basket_id}")
 
@@ -77,6 +154,7 @@ def simulate_single_basket(basket_id):
 
         # 3. DEPARTURE 전송 (통과/운행 재개)
         departure = create_event(basket_id, 'DEPARTURE', center_id, zone_id, line_id, section_id)
+        departure['sensor_id'] = sensor_id if sensor_id is not None else random.randint(1, 5)
         device_client.send_message(json.dumps(departure))
         
         if is_bottleneck:
@@ -87,16 +165,50 @@ def simulate_single_basket(basket_id):
     except Exception as e:
         print(f"[{get_now()}] ❌ [전송 오류] 바스켓 #{basket_id} @ {loc_str}: {e}")
 
+def init_iothub_client(center_id):
+    connection_string_key = f"IOT_HUB_DEVICE_CONNECTION_STRING{center_id}"
+    connection_string = os.getenv(connection_string_key)
+    if not connection_string:
+        connection_string = os.getenv("IOT_HUB_DEVICE_CONNECTION_STRING")
+        if not connection_string:
+            print(
+                "❌ [초기화 실패] IoT Hub 연결 문자열을 확인하세요: "
+                f"{connection_string_key} 또는 IOT_HUB_DEVICE_CONNECTION_STRING"
+            )
+            exit()
+    try:
+        client = IoTHubDeviceClient.create_from_connection_string(connection_string)
+        client.connect()
+        return client
+    except Exception as e:
+        print(f"❌ [초기화 실패] IoT Hub 연결 문자열을 확인하세요: {e}")
+        exit()
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Logistics center data generator")
+    parser.add_argument("--center-id", type=int, required=True, help="Fix all events to a center_id")
+    args = parser.parse_args()
+    device_client = init_iothub_client(args.center_id)
+
     print("="*60)
     print("🚀 물류센터 실시간 멀티 라인 시뮬레이터 가동")
     print("="*60)
+
+    runtime_config = load_runtime_config()
+    if runtime_config:
+        print("✅ 설정 DB 연동 활성화")
+    else:
+        print("⚠️  설정 DB 연동 실패: 기본 범위 사용")
     
     try:
         while True:
             # 새로운 바스켓 투입 (멀티스레딩)
             target_basket = random.randint(10000, 99999)
-            basket_thread = threading.Thread(target=simulate_single_basket, args=(target_basket,))
+            basket_thread = threading.Thread(
+                target=simulate_single_basket,
+                args=(target_basket, runtime_config, args.center_id)
+            )
             basket_thread.daemon = True 
             basket_thread.start()
             
