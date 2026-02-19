@@ -161,11 +161,11 @@ class RealtimeDataGenerator:
         )
         return event
     
-    def generate_sensor_event(self, center_id: int, db_session: Session) -> SensorEvent:
+    def generate_sensor_event(self, center_id: int, db_session: Session, line_id: int = None) -> SensorEvent:
         """센서 이벤트 생성"""
         sensor_ids = self.get_center_sensor_ids(center_id, db_session)
         sensor_id = random.choice(sensor_ids)
-        line_id = random.choice(self.line_ids)
+        line_id = line_id if line_id is not None else random.choice(self.line_ids)
         zone_id = random.choice(self.zone_ids)
         section_id = random.choice(self.section_ids)
         sensor_type = random.choice(SENSOR_TYPES)
@@ -189,8 +189,8 @@ class RealtimeDataGenerator:
         else:  # POSITION
             numeric_value = random.uniform(0, 360)
         
-        # 5% 확률로 에러
-        has_error = random.random() < 0.05
+        # 1% 확률로 에러 (현실적인 오류율)
+        has_error = random.random() < 0.01
         
         event = SensorEvent(
             event_type_code=random.choice(EVENT_TYPE_CODES),
@@ -661,10 +661,11 @@ class RealtimeDataGenerator:
                     event = self.generate_bottleneck_event(center_id, center_db)
                     batch.append(event)
                 
-                # 4. Sensor Events (센터당 30-100)
-                for _ in range(random.randint(30, 100)):
-                    event = self.generate_sensor_event(center_id, center_db)
-                    batch.append(event)
+                # 4. Sensor Events (라인별 균등 생성)
+                for line_id in self.line_ids:
+                    for _ in range(random.randint(2, 5)):
+                        event = self.generate_sensor_event(center_id, center_db, line_id=line_id)
+                        batch.append(event)
                 
                 # 배치 삽입
                 inserted = self.batch_insert(batch, center_db)

@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from app.db import get_session
-from app.models import Center, Zone, Line
+from app.models import Center, Zone, Line, Section, Sensor, ThresholdConfig
 from app.schemas.settings import (
     CenterCreate, CenterUpdate, 
-    ZoneCreate, LineCreate
+    ZoneCreate, LineCreate, SectionCreate, SensorCreate, ThresholdUpdate
 )
 
 router = APIRouter(tags=["Settings"])
@@ -109,5 +109,87 @@ def create_line(payload: LineCreate):
         db.commit()
         db.refresh(new_line)
         return new_line
+    finally:
+        db.close()
+
+# --- Sections (특정 센터 DB에서 처리) ---
+
+@router.get("/settings/lines/{line_id}/sections")
+def list_sections(line_id: int, center_id: Optional[int] = None):
+    db = get_db_session(center_id)
+    try:
+        return db.query(Section).filter(Section.line_id == line_id).all()
+    finally:
+        db.close()
+
+@router.post("/settings/sections")
+def create_section(payload: SectionCreate, center_id: Optional[int] = None):
+    db = get_db_session(center_id)
+    try:
+        new_section = Section(**payload.model_dump())
+        db.add(new_section)
+        db.commit()
+        db.refresh(new_section)
+        return new_section
+    finally:
+        db.close()
+
+# --- Sensors (특정 센터 DB에서 처리) ---
+
+@router.get("/settings/lines/{line_id}/sensors")
+def list_sensors(line_id: int, center_id: Optional[int] = None):
+    db = get_db_session(center_id)
+    try:
+        section_ids = (
+            db.query(Section.id)
+            .filter(Section.line_id == line_id)
+            .subquery()
+        )
+        return db.query(Sensor).filter(Sensor.section_id.in_(section_ids)).all()
+    finally:
+        db.close()
+
+@router.post("/settings/sensors")
+def create_sensor(payload: SensorCreate, center_id: Optional[int] = None):
+    db = get_db_session(center_id)
+    try:
+        new_sensor = Sensor(**payload.model_dump())
+        db.add(new_sensor)
+        db.commit()
+        db.refresh(new_sensor)
+        return new_sensor
+    finally:
+        db.close()
+
+# --- Thresholds (항상 중앙 DB인 'main'에서 처리) ---
+
+@router.get("/settings/thresholds")
+def list_thresholds():
+    db = get_db_session()
+    try:
+        return db.query(ThresholdConfig).order_by(ThresholdConfig.config_key).all()
+    finally:
+        db.close()
+
+@router.put("/settings/thresholds/{config_key}")
+def update_threshold(config_key: str, payload: ThresholdUpdate):
+    db = get_db_session()
+    try:
+        threshold = db.query(ThresholdConfig).filter(
+            ThresholdConfig.config_key == config_key
+        ).first()
+        if not threshold:
+            threshold = ThresholdConfig(
+                config_key=config_key,
+                config_value=payload.config_value,
+                description=payload.description
+            )
+            db.add(threshold)
+        else:
+            threshold.config_value = payload.config_value
+            threshold.description = payload.description
+        db.commit()
+        db.refresh(threshold)
+        return threshold
     finally:
         db.close()

@@ -24,25 +24,22 @@ const listLines = (center_id) =>
 const createLine = (payload, center_id) =>
   request("/api/settings/lines", { method: "POST", body: payload, params: { center_id } });
 
-const listSections = (line_id) =>
-  request(`/api/settings/lines/${line_id}/sections`);
+const listSections = (line_id, center_id) =>
+  request(`/api/settings/lines/${line_id}/sections`, {
+    params: center_id ? { center_id } : undefined
+  });
 
 const createSection = (payload, center_id) =>
   request("/api/settings/sections", { method: "POST", body: payload, params: { center_id } });
 
-const listSensors = (line_id) =>
-  request(`/api/settings/lines/${line_id}/sensors`);
+const listSensors = (line_id, center_id) =>
+  request(`/api/settings/lines/${line_id}/sensors`, {
+    params: center_id ? { center_id } : undefined
+  });
 
 const createSensor = (payload, center_id) =>
   request("/api/settings/sensors", { method: "POST", body: payload, params: { center_id } });
 
-const listThresholds = () => request("/api/settings/thresholds");
-
-const updateThreshold = (config_key, payload) =>
-  request(`/api/settings/thresholds/${config_key}`, {
-    method: "PUT",
-    body: payload
-  });
 
 export {
   listCenters,
@@ -56,7 +53,5 @@ export {
   listSections,
   createSection,
   listSensors,
-  createSensor,
-  listThresholds,
-  updateThreshold
+  createSensor
 };

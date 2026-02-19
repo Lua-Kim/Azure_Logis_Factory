@@ -6,6 +6,7 @@ const SensorMonitoring = () => {
   const [limit, setLimit] = useState(50);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(0);
+  const [showGuide, setShowGuide] = useState(true);
 
   const sensorState = useAsync(
     () => getSensorMonitoring({ limit, hours: 1 }),
@@ -69,6 +70,27 @@ const SensorMonitoring = () => {
           </select>
         </div>
       </div>
+
+      <div className="guide-toggle">
+        <span className="muted">Guide</span>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setShowGuide((prev) => !prev)}
+        >
+          {showGuide ? "Hide guide" : "Show guide"}
+        </button>
+      </div>
+      {showGuide ? (
+        <div className="card guide-panel">
+          <h2>이 페이지 보는 방법</h2>
+          <div className="stat-block">
+            <p className="muted">오류 이벤트: 최근 오류 로그를 요약합니다.</p>
+            <p className="muted">센서 건강도: 이벤트/오류 비율로 상태를 표시합니다.</p>
+            <p className="muted">자동 새로고침: 5초 주기로 갱신됩니다.</p>
+          </div>
+        </div>
+      ) : null}
 
       {sensorState.loading ? (
         <p style={{ color: "#6b7280" }}>로딩 중...</p>

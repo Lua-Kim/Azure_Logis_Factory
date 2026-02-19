@@ -7,6 +7,7 @@ import DashboardCenter from "./pages/DashboardCenter.jsx";
 import DashboardHQ from "./pages/DashboardHQ.jsx";
 import KPIReport from "./pages/KPIReport.jsx";
 import LineAnalytics from "./pages/LineAnalytics.jsx";
+import CostLossDashboard from "./pages/CostLossDashboard.jsx";
 import PerformanceDashboard from "./pages/PerformanceDashboard.jsx";
 import SensorMonitoring from "./pages/SensorMonitoring.jsx";
 import Settings from "./pages/Settings.jsx";
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="centers/:centerId" element={<DashboardCenter />} />
           <Route path="lines/:lineId" element={<LineAnalytics />} />
           <Route path="bottlenecks" element={<BottleneckAnalytics />} />
+          <Route path="costs" element={<CostLossDashboard />} />
           <Route path="kpi" element={<KPIReport />} />
           <Route path="performance" element={<PerformanceDashboard />} />
           <Route path="sensors" element={<SensorMonitoring />} />

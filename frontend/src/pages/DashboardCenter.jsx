@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import useAsync from "../hooks/useAsync.js";
 import usePolling from "../hooks/usePolling.js";
@@ -16,6 +16,7 @@ import LineStatusTable from "../components/dashboard/LineStatusTable.jsx";
 const DashboardCenter = () => {
   const { centerId } = useParams();
   const centerNumericId = centerId ? Number(centerId) : null;
+  const [showGuide, setShowGuide] = useState(true);
 
   const { refreshMs, window } = useFilters();
   const lineState = useAsync(() => getLineStatus(), []);
@@ -45,6 +46,26 @@ const DashboardCenter = () => {
   return (
     <section className="page">
       <p>Center-specific KPI and line status placeholder.</p>
+      <div className="guide-toggle">
+        <span className="muted">Guide</span>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setShowGuide((prev) => !prev)}
+        >
+          {showGuide ? "Hide guide" : "Show guide"}
+        </button>
+      </div>
+      {showGuide ? (
+        <div className="card guide-panel">
+          <h2>이 페이지 보는 방법</h2>
+          <div className="stat-block">
+            <p className="muted">센터별 KPI와 라인 상태를 요약합니다.</p>
+            <p className="muted">Recent Events에서 센서/운영 이벤트 흐름을 확인하세요.</p>
+            <p className="muted">하단 모듈에서 KPI/라인/이벤트 상세를 확장할 수 있습니다.</p>
+          </div>
+        </div>
+      ) : null}
       <div className="card-grid">
         <div className="card">
           <h2>Line Status Snapshot</h2>

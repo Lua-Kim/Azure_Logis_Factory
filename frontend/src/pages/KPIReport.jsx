@@ -12,6 +12,7 @@ import ThroughputScatter from "../components/kpi/ThroughputScatter.jsx";
 const KPIReport = () => {
   const { window: globalWindow, refreshMs, wsEnabled, centerId, lineId } = useFilters();
   const [window, setWindow] = useState(globalWindow);
+  const [showGuide, setShowGuide] = useState(true);
   const { data, loading, error, run } = useAsync(
     () => getKpi(window, 50),
     [window]
@@ -39,6 +40,26 @@ const KPIReport = () => {
   return (
     <section className="page">
       <p>Performance and SLA report placeholder.</p>
+      <div className="guide-toggle">
+        <span className="muted">Guide</span>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setShowGuide((prev) => !prev)}
+        >
+          {showGuide ? "Hide guide" : "Show guide"}
+        </button>
+      </div>
+      {showGuide ? (
+        <div className="card guide-panel">
+          <h2>이 페이지 보는 방법</h2>
+          <div className="stat-block">
+            <p className="muted">Window에서 집계 기간을 선택합니다.</p>
+            <p className="muted">SLA/Throughput/Heatmap/표를 함께 비교하세요.</p>
+            <p className="muted">필터로 센터/라인을 좁히면 더 정확합니다.</p>
+          </div>
+        </div>
+      ) : null}
       <div className="card">
         <h2>Window</h2>
         <select

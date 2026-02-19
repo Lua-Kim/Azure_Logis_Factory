@@ -21,6 +21,7 @@ const BottleneckAnalytics = () => {
   const [limit, setLimit] = useState(20);
   const [lineList, setLineList] = useState([]);
   const [centerList, setCenterList] = useState([]);
+  const [showGuide, setShowGuide] = useState(true);
 
   // Load line status to get center and line options
   const { data: lineStatusData } = useAsync(getLineStatus, []);
@@ -80,6 +81,26 @@ const BottleneckAnalytics = () => {
 
   return (
     <section className="page">
+      <div className="guide-toggle">
+        <span className="muted">Guide</span>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setShowGuide((prev) => !prev)}
+        >
+          {showGuide ? "Hide guide" : "Show guide"}
+        </button>
+      </div>
+      {showGuide ? (
+        <div className="card guide-panel">
+          <h2>이 페이지 보는 방법</h2>
+          <div className="stat-block">
+            <p className="muted">Filters: 센터/라인/건수를 기준으로 필터링합니다.</p>
+            <p className="muted">Cause/Duration/Timeline: 원인 분포와 지속시간을 시각화합니다.</p>
+            <p className="muted">BottleneckTable: 최근 병목 이벤트를 상세히 확인합니다.</p>
+          </div>
+        </div>
+      ) : null}
       {/* Filters */}
       <div className="card">
         <h2>Filters</h2>

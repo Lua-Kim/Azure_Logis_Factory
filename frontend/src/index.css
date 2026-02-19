@@ -248,6 +248,11 @@ a {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.stack-md {
+  display: grid;
+  gap: 14px;
+}
+
 .dashboard-rows {
   display: grid;
   gap: 16px;
@@ -405,4 +410,117 @@ a {
     flex-direction: row;
     flex-wrap: wrap;
   }
+}
+
+.cost-loss-page {
+  display: grid;
+  gap: 20px;
+}
+
+.cost-hero {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  color: #f8fafc;
+  background: linear-gradient(120deg, #0f172a, #1e293b 55%, #0f172a);
+  position: relative;
+  overflow: hidden;
+}
+
+.cost-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 80% 20%, rgba(148, 163, 184, 0.35), transparent 55%);
+  pointer-events: none;
+}
+
+.cost-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(226, 232, 240, 0.8);
+}
+
+.cost-hero h1 {
+  margin: 8px 0 6px;
+  font-size: 28px;
+}
+
+.cost-subtitle {
+  margin: 0;
+  max-width: 420px;
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.cost-controls {
+  display: grid;
+  gap: 10px;
+  min-width: 220px;
+  position: relative;
+  z-index: 1;
+}
+
+.cost-metrics {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.metric-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.metric-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #94a3b8;
+}
+
+.metric-value {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.metric-helper {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.cost-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.cost-panel {
+  text-align: left;
+}
+
+.cost-span {
+  grid-column: 1 / -1;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
 }

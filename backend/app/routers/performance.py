@@ -1,11 +1,25 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Query
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, text
 from app.db import get_session
 from app.models import BottleneckEvent, KpiReport, LineStatus, Line, Center, SensorEvent
 
 router = APIRouter(tags=["Performance"])
+
+CENTER_DB_MAP = {
+    100: "main",
+    110: "0",
+    120: "1",
+    130: "2",
+    140: "3"
+}
+
+
+def resolve_db_id(center_id: Optional[int]) -> str:
+    if center_id is None:
+        return "main"
+    return CENTER_DB_MAP.get(center_id, "main")
 
 @router.get("/performance/summary")
 def performance_summary(center_id: Optional[int] = None, hours: int = Query(24)):
@@ -16,7 +30,7 @@ def performance_summary(center_id: Optional[int] = None, hours: int = Query(24))
     - 총 정지 시간
     - 라인 가용성
     """
-    db = get_session("main" if not center_id else str(center_id))
+    db = get_session(resolve_db_id(center_id))
     try:
         time_threshold = datetime.utcnow() - timedelta(hours=hours)
         
@@ -89,7 +103,7 @@ def line_metrics(center_id: Optional[int] = None, hours: int = Query(24)):
     - 각 라인의 병목 통계
     - 각 라인의 가용성
     """
-    db = get_session("main" if not center_id else str(center_id))
+    db = get_session(resolve_db_id(center_id))
     try:
         time_threshold = datetime.utcnow() - timedelta(hours=hours)
         
@@ -168,7 +182,7 @@ def error_analysis(center_id: Optional[int] = None, hours: int = Query(24)):
     - 가장 많은 오류 유형
     - 오류별 빈도
     """
-    db = get_session("main" if not center_id else str(center_id))
+    db = get_session(resolve_db_id(center_id))
     try:
         time_threshold = datetime.utcnow() - timedelta(hours=hours)
         
@@ -215,7 +229,168 @@ def performance_trend(center_id: Optional[int] = None, interval: str = Query("ho
     - 시간대별 병목 사건 수
     - 시간대별 가용성
     """
-    db = get_session("main" if not center_id else str(center_id))
+    db = get_session(resolve_db_id(center_id))
+
+
+@router.get("/performance/cost-loss/summary")
+def cost_loss_summary(center_id: Optional[int] = None, days: int = Query(7, ge=1, le=90)):
+    """
+    비용/손실 요약:
+    - 비용 합계/카테고리별 비용/일별 비용 추이
+    - 손실 합계/라인별 손실/일별 손실 추이
+    - 집계 요약(throughput, bottleneck)
+    """
+    db = get_session(resolve_db_id(center_id))
+    try:
+        date_threshold = (datetime.utcnow() - timedelta(days=days)).date()
+        ts_threshold = datetime.utcnow() - timedelta(days=days)
+        params = {
+            "date_threshold": date_threshold,
+            "ts_threshold": ts_threshold
+        }
+
+        center_filter_date = ""
+        center_filter_ts = ""
+        if center_id:
+            params["center_id"] = center_id
+            center_filter_date = "AND center_id = :center_id"
+            center_filter_ts = "AND center_id = :center_id"
+
+        cost_total = 0
+        cost_by_category = []
+        cost_trend = []
+
+        try:
+            cost_total = db.execute(
+                text(
+                    "SELECT COALESCE(SUM(amount), 0) "
+                    "FROM operation_cost "
+                    "WHERE date >= :date_threshold "
+                    f"{center_filter_date}"
+                ),
+                params
+            ).scalar() or 0
+
+            rows = db.execute(
+                text(
+                    "SELECT category, COALESCE(SUM(amount), 0) AS total "
+                    "FROM operation_cost "
+                    "WHERE date >= :date_threshold "
+                    f"{center_filter_date} "
+                    "GROUP BY category "
+                    "ORDER BY total DESC"
+                ),
+                params
+            ).fetchall()
+            cost_by_category = [
+                {"category": row[0], "amount": int(row[1] or 0)} for row in rows
+            ]
+
+            rows = db.execute(
+                text(
+                    "SELECT date, COALESCE(SUM(amount), 0) AS total "
+                    "FROM operation_cost "
+                    "WHERE date >= :date_threshold "
+                    f"{center_filter_date} "
+                    "GROUP BY date "
+                    "ORDER BY date"
+                ),
+                params
+            ).fetchall()
+            cost_trend = [
+                {"date": row[0].isoformat(), "amount": int(row[1] or 0)} for row in rows
+            ]
+        except Exception:
+            pass
+
+        loss_total = 0
+        loss_by_line = []
+        loss_trend = []
+
+        try:
+            loss_total = db.execute(
+                text(
+                    "SELECT COALESCE(SUM(loss_amount), 0) "
+                    "FROM loss_analysis "
+                    "WHERE window_end >= :ts_threshold "
+                    f"{center_filter_ts}"
+                ),
+                params
+            ).scalar() or 0
+
+            rows = db.execute(
+                text(
+                    "SELECT line_id, COALESCE(SUM(loss_amount), 0) AS total "
+                    "FROM loss_analysis "
+                    "WHERE window_end >= :ts_threshold "
+                    f"{center_filter_ts} "
+                    "GROUP BY line_id "
+                    "ORDER BY total DESC "
+                    "LIMIT 8"
+                ),
+                params
+            ).fetchall()
+            loss_by_line = [
+                {"line_id": row[0], "loss_amount": int(row[1] or 0)} for row in rows
+            ]
+
+            rows = db.execute(
+                text(
+                    "SELECT date_trunc('day', window_start) AS day, COALESCE(SUM(loss_amount), 0) AS total "
+                    "FROM loss_analysis "
+                    "WHERE window_start >= :ts_threshold "
+                    f"{center_filter_ts} "
+                    "GROUP BY day "
+                    "ORDER BY day"
+                ),
+                params
+            ).fetchall()
+            loss_trend = [
+                {"date": row[0].isoformat(), "loss_amount": int(row[1] or 0)} for row in rows
+            ]
+        except Exception:
+            pass
+
+        aggregation_trend = []
+        try:
+            rows = db.execute(
+                text(
+                    "SELECT bucket_start, "
+                    "COALESCE(SUM(throughput_total), 0) AS throughput_total, "
+                    "COALESCE(SUM(bottleneck_count), 0) AS bottleneck_count "
+                    "FROM aggregation_summary "
+                    "WHERE bucket_start >= :ts_threshold "
+                    f"{center_filter_ts} "
+                    "GROUP BY bucket_start "
+                    "ORDER BY bucket_start"
+                ),
+                params
+            ).fetchall()
+            aggregation_trend = [
+                {
+                    "timestamp": row[0].isoformat(),
+                    "throughput_total": int(row[1] or 0),
+                    "bottleneck_count": int(row[2] or 0)
+                }
+                for row in rows
+            ]
+        except Exception:
+            pass
+
+        return {
+            "center_id": center_id,
+            "days": days,
+            "cost_total": int(cost_total),
+            "cost_by_category": cost_by_category,
+            "cost_trend": cost_trend,
+            "loss_total": int(loss_total),
+            "loss_by_line": loss_by_line,
+            "loss_trend": loss_trend,
+            "aggregation_trend": aggregation_trend,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    finally:
+        db.close()
     try:
         if interval == "hourly":
             hours_back = 24
@@ -274,7 +449,7 @@ def sensor_monitoring(center_id: Optional[int] = None, limit: int = Query(100), 
     - 센서별 상태 (정상/경고/오류)
     - 라인별 센서 건강도
     """
-    db = get_session("main" if not center_id else str(center_id))
+    db = get_session(resolve_db_id(center_id))
     try:
         time_threshold = datetime.utcnow() - timedelta(hours=hours)
         
@@ -293,7 +468,9 @@ def sensor_monitoring(center_id: Optional[int] = None, limit: int = Query(100), 
             func.avg(SensorEvent.numeric_value).label("avg_value"),
             func.max(SensorEvent.occurred_at).label("last_updated")
         ).filter(
-            SensorEvent.occurred_at >= time_threshold
+            SensorEvent.occurred_at >= time_threshold,
+            SensorEvent.sensor_id != None,
+            SensorEvent.line_id != None
         ).group_by(
             SensorEvent.line_id,
             SensorEvent.sensor_id
@@ -304,16 +481,21 @@ def sensor_monitoring(center_id: Optional[int] = None, limit: int = Query(100), 
         for line_id, sensor_id, event_count, error_count, avg_value, last_updated in sensors_by_line:
             error_rate = (error_count / event_count * 100) if event_count > 0 else 0
             
-            # 건강도 판단: 오류율이 높을수록 낮음
-            if error_rate > 20:
-                health_status = "CRITICAL"
-                health_score = max(0, 100 - error_rate * 5)
-            elif error_rate > 10:
-                health_status = "WARNING"
-                health_score = max(30, 100 - error_rate * 3)
+            # 이벤트가 너무 적으면 상태 판단을 보류
+            if event_count < 5:
+                health_status = "UNKNOWN"
+                health_score = 70
             else:
-                health_status = "HEALTHY"
-                health_score = 100 - error_rate * 2
+                # 건강도 판단: 오류율이 높을수록 낮음
+                if error_rate > 20:
+                    health_status = "CRITICAL"
+                    health_score = max(0, 100 - error_rate * 5)
+                elif error_rate > 10:
+                    health_status = "WARNING"
+                    health_score = max(30, 100 - error_rate * 3)
+                else:
+                    health_status = "HEALTHY"
+                    health_score = 100 - error_rate * 2
             
             sensor_health.append({
                 "line_id": line_id,

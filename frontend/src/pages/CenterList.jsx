@@ -8,6 +8,7 @@ const CenterList = () => {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(10);
   const [selectedCenterId, setSelectedCenterId] = useState(null);
+  const [showGuide, setShowGuide] = useState(true);
   const { data, loading, error } = useAsync(
     () => listCenters({ page, size }),
     [page, size]
@@ -54,6 +55,25 @@ const CenterList = () => {
   return (
     <section className="page">
       <p>Center list with paging and search.</p>
+      <div className="guide-toggle">
+        <span className="muted">Guide</span>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setShowGuide((prev) => !prev)}
+        >
+          {showGuide ? "Hide guide" : "Show guide"}
+        </button>
+      </div>
+      {showGuide ? (
+        <div className="card guide-panel">
+          <h2>이 페이지 보는 방법</h2>
+          <div className="stat-block">
+            <p className="muted">센터 목록에서 센터를 선택하면 아래 KPI가 갱신됩니다.</p>
+            <p className="muted">페이지 크기를 조절해 더 많은 센터를 확인할 수 있습니다.</p>
+          </div>
+        </div>
+      ) : null}
       <div className="card">
         <h2>Center List</h2>
         <div className="center-list__controls">

@@ -4,6 +4,7 @@ const navItems = [
   { to: "/", label: "HQ Dashboard" },
   { to: "/centers", label: "Centers" },
   { to: "/bottlenecks", label: "Bottlenecks" },
+  { to: "/costs", label: "Cost and Loss" },
   { to: "/performance", label: "Performance" },
   { to: "/sensors", label: "Sensors" },
   { to: "/kpi", label: "KPI Report" },

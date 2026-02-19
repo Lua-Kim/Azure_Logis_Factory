@@ -29,10 +29,16 @@ const getSensorMonitoring = ({ center_id, limit = 100, hours = 1 } = {}) =>
     params: { center_id, limit, hours }
   });
 
+const getCostLossSummary = ({ center_id, days = 7 } = {}) =>
+  request("/api/performance/cost-loss/summary", {
+    params: { center_id, days }
+  });
+
 export {
   getSummary,
   getLineMetrics,
   getErrorAnalysis,
   getTrend,
-  getSensorMonitoring
+  getSensorMonitoring,
+  getCostLossSummary
 };

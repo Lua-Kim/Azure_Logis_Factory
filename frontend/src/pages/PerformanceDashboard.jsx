@@ -7,6 +7,7 @@ import {
   getErrorAnalysis,
   getTrend
 } from "../services/performanceService.js";
+import { listCenters } from "../services/settingsService.js";
 import {
   AreaChart,
   Area,
@@ -26,6 +27,10 @@ import {
 const PerformanceDashboard = () => {
   const [centerId, setCenterId] = useState(null);
   const [hours, setHours] = useState(24);
+  const [showGuide, setShowGuide] = useState(true);
+
+  const centersState = useAsync(() => listCenters({ page: 1, size: 200 }), []);
+  const centers = centersState.data?.items || [];
 
   const summaryState = useAsync(
     () =>
@@ -119,6 +124,26 @@ const PerformanceDashboard = () => {
         </h1>
         <div style={{ display: "flex", gap: "15px" }}>
           <select
+            value={centerId ?? ""}
+            onChange={(e) =>
+              setCenterId(e.target.value ? Number(e.target.value) : null)
+            }
+            style={{
+              padding: "8px 12px",
+              borderRadius: "6px",
+              border: "1px solid #d1d5db",
+              fontSize: "14px",
+              backgroundColor: "white"
+            }}
+          >
+            <option value="">전체 (Main)</option>
+            {centers.map((center) => (
+              <option key={center.id} value={center.id}>
+                {center.name} (#{center.id})
+              </option>
+            ))}
+          </select>
+          <select
             value={hours}
             onChange={(e) => setHours(Number(e.target.value))}
             style={{
@@ -136,6 +161,28 @@ const PerformanceDashboard = () => {
           </select>
         </div>
       </div>
+
+      <div className="guide-toggle">
+        <span className="muted">Guide</span>
+        <button
+          type="button"
+          className="tab"
+          onClick={() => setShowGuide((prev) => !prev)}
+        >
+          {showGuide ? "Hide guide" : "Show guide"}
+        </button>
+      </div>
+      {showGuide ? (
+        <div className="card guide-panel">
+          <h2>이 페이지 보는 방법</h2>
+          <div className="stat-block">
+            <p className="muted">KPI 카드: 병목, 처리량, 다운타임을 요약합니다.</p>
+            <p className="muted">라인 성능 표: 가용성, 오류율, 병목 통계를 비교합니다.</p>
+            <p className="muted">오류 분석: 주요 오류 코드/센서를 확인합니다.</p>
+            <p className="muted">추세 그래프: 시간대별 성능 변화를 봅니다.</p>
+          </div>
+        </div>
+      ) : null}
 
       {/* KPI 카드 그리드 */}
       <div

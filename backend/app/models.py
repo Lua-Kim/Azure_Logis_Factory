@@ -30,6 +30,15 @@ class Section(Base):
     order_in_line = Column(Integer)
     type = Column(String)
 
+class Sensor(Base):
+    __tablename__ = "sensor"
+    id = Column("sensor_id", BigInteger, primary_key=True, index=True)
+    section_id = Column(BigInteger, ForeignKey("section.section_id"))
+    equipment_id = Column(BigInteger)
+    sensor_type = Column(String)
+    name = Column(String, nullable=False)
+    status = Column(String, default="active")
+
 class Line(Base):
     __tablename__ = "line"
     id = Column("line_id", BigInteger, primary_key=True, index=True)
@@ -39,6 +48,13 @@ class Line(Base):
     status = Column(String, default="active")
     rail_length_m = Column(Float)
     section_count = Column(Integer)
+
+class ThresholdConfig(Base):
+    __tablename__ = "threshold_config"
+    id = Column("config_id", BigInteger, primary_key=True, index=True)
+    config_key = Column(String, unique=True, nullable=False)
+    config_value = Column(String, nullable=False)
+    description = Column(String)
 
 # --- 트랜잭션 및 상태 테이블 ---
 
