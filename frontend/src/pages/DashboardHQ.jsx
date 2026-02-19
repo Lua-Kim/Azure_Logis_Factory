@@ -135,8 +135,7 @@ const DashboardHQ = () => {
           <h2>이 페이지 보는 방법</h2>
           <div className="stat-block">
             <p className="muted">
-              ChartGrid: 전체 KPI 시계열(예: 처리량)을 시간 흐름으로
-              확인합니다.
+              ChartGrid: 처리량의 시간적 추이를 추적(Tracking)합니다.
             </p>
             <p className="muted">
               Line Status / Latest KPI Window: 전체 라인의 현재 상태 요약과

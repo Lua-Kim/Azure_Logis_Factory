@@ -15,6 +15,7 @@ from app.models import Line, KpiReport, BottleneckEvent
 from app.routers.health import router as health_router
 from app.routers.metrics import router as metrics_router
 from app.routers.settings import router as settings_router
+from app.routers.performance import router as performance_router
 
 # --- Lifespan 설정 ---
 @asynccontextmanager
@@ -55,6 +56,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(metrics_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
+app.include_router(performance_router, prefix="/api")
 
 # --- WebSocket용 실시간 데이터 조회 함수 ---
 def _fetch_snapshot(center_id: Optional[str] = None, line_id: Optional[int] = None) -> dict:
