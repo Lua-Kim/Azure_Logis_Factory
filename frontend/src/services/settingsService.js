@@ -18,20 +18,20 @@ const createZone = (payload) =>
 const listLines = (center_id) =>
   request(`/api/settings/centers/${center_id}/lines`);
 
-const createLine = (payload) =>
-  request("/api/settings/lines", { method: "POST", body: payload });
+const createLine = (payload, center_id) =>
+  request("/api/settings/lines", { method: "POST", body: payload, params: { center_id } });
 
 const listSections = (line_id) =>
   request(`/api/settings/lines/${line_id}/sections`);
 
-const createSection = (payload) =>
-  request("/api/settings/sections", { method: "POST", body: payload });
+const createSection = (payload, center_id) =>
+  request("/api/settings/sections", { method: "POST", body: payload, params: { center_id } });
 
 const listSensors = (line_id) =>
   request(`/api/settings/lines/${line_id}/sensors`);
 
-const createSensor = (payload) =>
-  request("/api/settings/sensors", { method: "POST", body: payload });
+const createSensor = (payload, center_id) =>
+  request("/api/settings/sensors", { method: "POST", body: payload, params: { center_id } });
 
 const listThresholds = () => request("/api/settings/thresholds");
 

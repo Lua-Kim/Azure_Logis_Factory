@@ -163,7 +163,7 @@ const Settings = () => {
       center_id: Number(lineForm.center_id),
       rail_length_m: Number(lineForm.rail_length_m),
       section_count: Number(lineForm.section_count)
-    });
+    }, Number(lineForm.center_id));
     setLineForm({
       ...lineForm,
       name: "",
@@ -182,7 +182,7 @@ const Settings = () => {
       order_in_line: sectionForm.order_in_line
         ? Number(sectionForm.order_in_line)
         : null
-    });
+    }, Number(lineForm.center_id));
     setSectionForm({ ...sectionForm, name: "", order_in_line: "", type: "" });
     sectionsState.run();
   };
@@ -195,7 +195,7 @@ const Settings = () => {
       equipment_id: sensorForm.equipment_id
         ? Number(sensorForm.equipment_id)
         : null
-    });
+    }, Number(lineForm.center_id));
     setSensorForm({
       ...sensorForm,
       equipment_id: "",

@@ -8,7 +8,22 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 load_dotenv(ENV_PATH)
 
-DB_URL = os.getenv("AZ_POSTGRE_DATABASE_URL")
+# 중앙 집계용(대상) 데이터베이스
+DEST_DB_URL = os.getenv("AZ_POSTGRE_DATABASE_URL")
+
+# 개별 센터(소스) 데이터베이스 목록
+SOURCE_DB_URLS = []
+i = 0
+while True:
+    url = os.getenv(f"AZ_POSTGRE_DATABASE_URL_{i}")
+    if url is None:
+        break
+    SOURCE_DB_URLS.append(url)
+    i += 1
+
+# 소스 DB가 하나도 없으면, 중앙 DB를 소스로 간주 (기존 로직 호환성)
+if not SOURCE_DB_URLS and DEST_DB_URL:
+    SOURCE_DB_URLS.append(DEST_DB_URL)
 
 LOSS_RATE = 0.15
 LOSS_UNIT_AMOUNT = 1200
