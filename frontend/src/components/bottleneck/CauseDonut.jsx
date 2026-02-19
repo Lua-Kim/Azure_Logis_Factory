@@ -1,5 +1,5 @@
 import ModuleCard from "../common/ModuleCard.jsx";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import { aggregateBottleneckByCause } from "../../utils/aggregate.js";
 
 const COLORS = ["#2563eb", "#f97316", "#16a34a", "#dc2626", "#9333ea"];
@@ -19,6 +19,7 @@ const CauseDonut = ({ items = [] }) => {
                 ))}
               </Pie>
               <Tooltip />
+              <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>

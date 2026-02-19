@@ -51,6 +51,20 @@ const KPIReport = () => {
           <option value="24h">24 hours</option>
         </select>
       </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginBottom: "1rem" }}>
+        <div className="module-card">
+          <SLATrendChart items={items} />
+        </div>
+        <div className="module-card">
+          <ThroughputScatter items={items} />
+        </div>
+        <div className="module-card">
+          <KPIHeatmap items={items} />
+        </div>
+        <div className="module-card">
+          <KPITable items={items} />
+        </div>
+      </div>
       <div className="card">
         <h2>Recent KPI</h2>
         {loading ? (
@@ -69,12 +83,6 @@ const KPIReport = () => {
         ) : (
           <p className="muted">No KPI data.</p>
         )}
-      </div>
-      <div className="module-grid">
-        <SLATrendChart items={items} />
-        <ThroughputScatter items={items} />
-        <KPIHeatmap items={items} />
-        <KPITable items={items} />
       </div>
     </section>
   );

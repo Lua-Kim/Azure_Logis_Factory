@@ -31,13 +31,41 @@ def list_centers(page: int = Query(1, ge=1), size: int = Query(20, ge=1, le=200)
 
 @router.post("/settings/centers")
 def create_center(payload: CenterCreate):
-    db = get_db_session()
+    db = get_db_session() # main DB
     try:
         new_center = Center(**payload.model_dump())
         db.add(new_center)
         db.commit()
         db.refresh(new_center)
         return new_center
+    finally:
+        db.close()
+
+@router.put("/settings/centers/{center_id}")
+def update_center(center_id: int, payload: CenterUpdate):
+    db = get_db_session() # main DB
+    try:
+        center = db.query(Center).filter(Center.id == center_id).first()
+        if not center:
+            raise HTTPException(status_code=404, detail="Center not found")
+        for key, value in payload.model_dump(exclude_unset=True).items():
+            setattr(center, key, value)
+        db.commit()
+        db.refresh(center)
+        return center
+    finally:
+        db.close()
+
+@router.delete("/settings/centers/{center_id}")
+def delete_center(center_id: int):
+    db = get_db_session() # main DB
+    try:
+        center = db.query(Center).filter(Center.id == center_id).first()
+        if not center:
+            raise HTTPException(status_code=404, detail="Center not found")
+        db.delete(center)
+        db.commit()
+        return {"status": "deleted", "center_id": center_id}
     finally:
         db.close()
 

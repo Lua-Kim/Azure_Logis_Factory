@@ -9,6 +9,9 @@ const createCenter = (payload) =>
 const updateCenter = (center_id, payload) =>
   request(`/api/settings/centers/${center_id}`, { method: "PUT", body: payload });
 
+const deleteCenter = (center_id) =>
+  request(`/api/settings/centers/${center_id}`, { method: "DELETE" });
+
 const listZones = (center_id) =>
   request(`/api/settings/centers/${center_id}/zones`);
 
@@ -45,6 +48,7 @@ export {
   listCenters,
   createCenter,
   updateCenter,
+  deleteCenter,
   listZones,
   createZone,
   listLines,

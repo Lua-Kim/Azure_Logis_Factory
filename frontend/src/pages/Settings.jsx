@@ -14,6 +14,7 @@ import {
   createSection,
   createSensor,
   createZone,
+  deleteCenter,
   listCenters,
   listLines,
   listSections,
@@ -25,6 +26,7 @@ import {
 } from "../services/settingsService.js";
 
 const emptyCenter = {
+  center_id: null,
   name: "",
   location: "",
   status: "ACTIVE",
@@ -105,13 +107,24 @@ const Settings = () => {
   const sensors = sensorsState.data || [];
 
   useEffect(() => {
-    if (centers.length && !zoneCenterId) {
-      setZoneCenterId(centers[0].center_id);
-    }
-    if (centers.length && !lineCenterId) {
-      setLineCenterId(centers[0].center_id);
+    if (centers.length > 0) {
+      // 센터가 선택되지 않으면 첫 센터 선택
+      if (!zoneCenterId) {
+        setZoneCenterId(centers[0].center_id);
+      }
+      // lineCenterId도 zoneCenterId와 동기화
+      if (!lineCenterId) {
+        setLineCenterId(zoneCenterId || centers[0].center_id);
+      }
     }
   }, [centers, zoneCenterId, lineCenterId]);
+
+  useEffect(() => {
+    // 선택된 센터의 라인 목록 조회
+    if (lineCenterId) {
+      linesState.run();
+    }
+  }, [lineCenterId]);
 
   useEffect(() => {
     if (lines.length && !sectionLineId) {
@@ -129,24 +142,49 @@ const Settings = () => {
 
   const handleCreateCenter = async (event) => {
     event.preventDefault();
-    await createCenter(newCenter);
+    if (newCenter.center_id) {
+      // Update mode
+      const payload = Object.fromEntries(
+        Object.entries(newCenter).filter(
+          ([key, value]) => key !== "center_id" && value !== "" && value !== null
+        )
+      );
+      await updateCenter(newCenter.center_id, payload);
+    } else {
+      // Create mode
+      await createCenter(newCenter);
+    }
     setNewCenter(emptyCenter);
     centersState.run();
   };
 
-  const handleUpdateCenter = async (event) => {
-    event.preventDefault();
-    if (!updateTargetId) {
+  const handleSelectCenter = (row) => {
+    setNewCenter({
+      center_id: row.center_id,
+      name: row.name || "",
+      location: row.location || "",
+      status: row.status || "ACTIVE",
+      opened_at: row.opened_at || ""
+    });
+    // 센터 선택 시 zoneCenterId와 lineCenterId도 업데이트하여 stats 표시
+    setZoneCenterId(row.center_id);
+    setLineCenterId(row.center_id);
+  };
+
+  const handleClearForm = () => {
+    setNewCenter(emptyCenter);
+  };
+
+  const handleDeleteCenter = async () => {
+    if (!newCenter.center_id) {
+      alert("센터를 선택해주세요");
       return;
     }
-    const payload = Object.fromEntries(
-      Object.entries(updateCenterPayload).filter(
-        ([, value]) => value !== "" && value !== null
-      )
-    );
-    await updateCenter(updateTargetId, payload);
-    setUpdateCenterPayload({ name: "", location: "", status: "", opened_at: "" });
-    centersState.run();
+    if (confirm(`정말 "${newCenter.name}" 센터를 삭제하시겠습니까?`)) {
+      await deleteCenter(newCenter.center_id);
+      setNewCenter(emptyCenter);
+      centersState.run();
+    }
   };
 
   const handleCreateZone = async (event) => {
@@ -313,14 +351,52 @@ const Settings = () => {
                   key: "opened_at",
                   label: "Opened",
                   render: (row) => row.opened_at || "-"
+                },
+                {
+                  key: "actions",
+                  label: "Actions",
+                  render: (row) => (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`정말 "${row.name}" 센터를 삭제하시겠습니까?`)) {
+                          console.log("Deleting center:", row.center_id);
+                          deleteCenter(row.center_id)
+                            .then((res) => {
+                              console.log("Delete response:", res);
+                              centersState.run();
+                              setNewCenter(emptyCenter);
+                              alert("센터가 삭제되었습니다.");
+                            })
+                            .catch((err) => {
+                              console.error("Delete error:", err);
+                              alert("삭제 중 오류가 발생했습니다: " + err.message);
+                            });
+                        }
+                      }}
+                      style={{
+                        padding: "6px 12px",
+                        backgroundColor: "#ef4444",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "12px"
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )
                 }
               ]}
               emptyMessage="No centers available."
+              onRowClick={handleSelectCenter}
             />
           )}
           </CenterList>
 
-          <CenterForm title="CenterForm">
+          <CenterForm title={newCenter.center_id ? "Update Center" : "Create Center"}>
           <form className="form-grid" onSubmit={handleCreateCenter}>
             <input
               className="input"
@@ -356,75 +432,16 @@ const Settings = () => {
               }
             />
             <button className="button" type="submit">
-              Create
+              {newCenter.center_id ? "Update" : "Create"}
             </button>
+            {newCenter.center_id && (
+              <button className="button" type="button" onClick={handleClearForm}>
+                Clear
+              </button>
+            )}
           </form>
           </CenterForm>
 
-          <CenterForm title="CenterForm (Update)">
-          <form className="form-grid" onSubmit={handleUpdateCenter}>
-            <select
-              className="input"
-              value={updateTargetId}
-              onChange={(event) => setUpdateTargetId(event.target.value)}
-              required
-            >
-              <option value="">Select center</option>
-              {centers.map((center) => (
-                <option key={center.center_id} value={center.center_id}>
-                  {center.name || `Center ${center.center_id}`}
-                </option>
-              ))}
-            </select>
-            <input
-              className="input"
-              value={updateCenterPayload.name}
-              onChange={(event) =>
-                setUpdateCenterPayload({
-                  ...updateCenterPayload,
-                  name: event.target.value
-                })
-              }
-              placeholder="Name"
-            />
-            <input
-              className="input"
-              value={updateCenterPayload.location}
-              onChange={(event) =>
-                setUpdateCenterPayload({
-                  ...updateCenterPayload,
-                  location: event.target.value
-                })
-              }
-              placeholder="Location"
-            />
-            <input
-              className="input"
-              value={updateCenterPayload.status}
-              onChange={(event) =>
-                setUpdateCenterPayload({
-                  ...updateCenterPayload,
-                  status: event.target.value
-                })
-              }
-              placeholder="Status"
-            />
-            <input
-              className="input"
-              type="date"
-              value={updateCenterPayload.opened_at}
-              onChange={(event) =>
-                setUpdateCenterPayload({
-                  ...updateCenterPayload,
-                  opened_at: event.target.value
-                })
-              }
-            />
-            <button className="button" type="submit">
-              Update
-            </button>
-          </form>
-          </CenterForm>
         </div>
       ) : null}
 

@@ -58,15 +58,14 @@ app.include_router(settings_router, prefix="/api")
 
 # --- WebSocket용 실시간 데이터 조회 함수 ---
 def _fetch_snapshot(center_id: Optional[str] = None, line_id: Optional[int] = None) -> dict:
+    from sqlalchemy import desc
     db_id = center_id if center_id else "main"
     db: Session = get_session(db_id)
     try:
         bind_url = db.get_bind().url
         # 비밀번호를 제외한 호스트, 포트, DB명만 출력
-        print(f"DEBUG: [Center {db_id}] 쿼리 시작 -> DB 주소: {bind_url.host}:{bind_url.port}/{bind_url.database}")
-    except Exception as e:
-        print(f"DEBUG: [Center {db_id}] DB 주소 확인 불가: {e}")
-
+        #print(f"DEBUG: [Center {db_id}] 쿼리 시작 -> DB 주소: {bind_url.host}:{bind_url.port}/{bind_url.database}")
+        
         # 라인 상태
         line_query = db.query(Line)
         if line_id:
@@ -89,6 +88,13 @@ def _fetch_snapshot(center_id: Optional[str] = None, line_id: Optional[int] = No
             "line_status": jsonable_encoder(line_status),
             "kpi": jsonable_encoder(kpis),
             "bottlenecks": jsonable_encoder(bottlenecks)
+        }
+    except Exception as e:
+        print(f"DEBUG: [Center {db_id}] 쿼리 실패: {e}")
+        return {
+            "line_status": [],
+            "kpi": [],
+            "bottlenecks": []
         }
     finally:
         db.close()

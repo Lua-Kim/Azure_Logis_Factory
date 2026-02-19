@@ -26,7 +26,7 @@ const CenterList = () => {
   const canPrev = page > 1;
   const canNext = page < totalPages;
   const selectedCenter = items.find(
-    (center) => center.center_id === selectedCenterId
+    (center) => center.id === selectedCenterId
   );
   const centerKpi = useMemo(() => {
     const allKpi = kpiState.data || [];
@@ -43,7 +43,7 @@ const CenterList = () => {
   const bottlenecks = bottleneckState.data || [];
   const columns = useMemo(
     () => [
-      { key: "center_id", label: "ID" },
+      { key: "id", label: "ID" },
       { key: "name", label: "Name" },
       { key: "location", label: "Location" },
       { key: "status", label: "Status" }
@@ -80,9 +80,9 @@ const CenterList = () => {
             rows={items}
             columns={columns}
             emptyMessage="No centers available."
-            onRowClick={(row) => setSelectedCenterId(row.center_id)}
+            onRowClick={(row) => setSelectedCenterId(row.id)}
             getRowClassName={(row) =>
-              row.center_id === selectedCenterId ? "is-selected" : ""
+              row.id === selectedCenterId ? "is-selected" : ""
             }
           />
         )}

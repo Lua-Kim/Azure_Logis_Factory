@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { useFilters } from "../context/FilterContext.jsx";
+import { getLineStatus } from "../services/metricsService.js";
 
 const FilterBar = () => {
   const {
@@ -13,6 +15,21 @@ const FilterBar = () => {
     setRefreshMs,
     setWsEnabled
   } = useFilters();
+
+  const [lineList, setLineList] = useState([]);
+  const [centerList, setCenterList] = useState([]);
+
+  useEffect(() => {
+    getLineStatus().then(data => {
+      if (Array.isArray(data)) {
+        setLineList(data);
+        const uniqueCenters = [...new Set(data.map(l => l.center_id))];
+        setCenterList(uniqueCenters);
+      }
+    });
+  }, []);
+
+  const filteredLines = centerId ? lineList.filter(l => l.center_id === Number(centerId)) : lineList;
 
   return (
     <div className="filter-bar">
@@ -30,21 +47,32 @@ const FilterBar = () => {
       </label>
       <label className="filter-item">
         Center ID
-        <input
+        <select
           className="input"
           value={centerId}
-          onChange={(event) => setCenterId(event.target.value)}
-          placeholder="e.g. 1"
-        />
+          onChange={(event) => {
+            setCenterId(event.target.value);
+            setLineId(""); // Reset line ID when center changes
+          }}
+        >
+          <option value="">All Centers</option>
+          {centerList.map(cid => (
+            <option key={cid} value={cid}>{cid}</option>
+          ))}
+        </select>
       </label>
       <label className="filter-item">
         Line ID
-        <input
+        <select
           className="input"
           value={lineId}
           onChange={(event) => setLineId(event.target.value)}
-          placeholder="e.g. 10"
-        />
+        >
+          <option value="">All Lines</option>
+          {filteredLines.map(line => (
+            <option key={line.id} value={line.id}>{line.name}</option>
+          ))}
+        </select>
       </label>
       <label className="filter-item">
         Refresh

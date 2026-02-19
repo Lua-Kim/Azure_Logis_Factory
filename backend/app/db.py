@@ -33,7 +33,7 @@ def init_db():
 
 
         safe_url = url.split('@')[-1] if '@' in url else url
-        print(f"DEBUG: [ID:{db_id}] 연결 주소: {safe_url}")
+        #print(f"DEBUG: [ID:{db_id}] 연결 주소: {safe_url}")
         engine = create_engine(url, pool_pre_ping=True, pool_size=5, max_overflow=10)
 
         
