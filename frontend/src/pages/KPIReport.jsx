@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useAsync from "../hooks/useAsync.js";
 import { useFilters } from "../context/FilterContext.jsx";
-import { getKpi } from "../services/metricsService.js";
+import { getKpi, getLineStatus } from "../services/metricsService.js";
 import usePolling from "../hooks/usePolling.js";
 import useWebSocketSnapshot from "../hooks/useWebSocketSnapshot.js";
 import KPIHeatmap from "../components/kpi/KPIHeatmap.jsx";
@@ -10,22 +10,51 @@ import SLATrendChart from "../components/kpi/SLATrendChart.jsx";
 import ThroughputScatter from "../components/kpi/ThroughputScatter.jsx";
 
 const KPIReport = () => {
-  const { window: globalWindow, refreshMs, wsEnabled, centerId, lineId } = useFilters();
+  const { window: globalWindow, refreshMs, wsEnabled } = useFilters();
   const [window, setWindow] = useState(globalWindow);
   const [showGuide, setShowGuide] = useState(true);
+  const [centerId, setCenterId] = useState("");
+  const [lineId, setLineId] = useState("");
+  const [lineList, setLineList] = useState([]);
+
+  useEffect(() => {
+    getLineStatus().then((data) => {
+      if (Array.isArray(data)) {
+        setLineList(data);
+      }
+    });
+  }, []);
+
+  const centerList = useMemo(
+    () => [...new Set(lineList.map((line) => line.center_id))],
+    [lineList]
+  );
+
+  const filteredLines = useMemo(() => {
+    if (!centerId) {
+      return lineList;
+    }
+    return lineList.filter((line) => line.center_id === Number(centerId));
+  }, [lineList, centerId]);
+
   const { data, loading, error, run } = useAsync(
-    () => getKpi(window, 50),
-    [window]
+    () =>
+      getKpi(window, 50, {
+        center_id: centerId ? Number(centerId) : undefined,
+        line_id: lineId ? Number(lineId) : undefined
+      }),
+    [window, centerId, lineId]
   );
   const { snapshot } = useWebSocketSnapshot(wsEnabled, {
     window,
-    center_id: centerId || undefined,
-    line_id: lineId || undefined
+    center_id: centerId ? Number(centerId) : undefined,
+    line_id: lineId ? Number(lineId) : undefined
   });
 
   usePolling(run, wsEnabled ? 0 : refreshMs);
   const items = useMemo(() => {
-    const base = wsEnabled && snapshot?.kpi ? snapshot.kpi : data || [];
+    const hasLiveKpi = wsEnabled && Array.isArray(snapshot?.kpi) && snapshot.kpi.length > 0;
+    const base = hasLiveKpi ? snapshot.kpi : data || [];
     return base.filter((item) => {
       if (centerId && item.center_id !== Number(centerId)) {
         return false;
@@ -71,6 +100,44 @@ const KPIReport = () => {
           <option value="1h">1 hour</option>
           <option value="24h">24 hours</option>
         </select>
+      </div>
+      <div className="card">
+        <h2>Scope</h2>
+        <div className="form-grid">
+          <label className="filter-item">
+            Center ID
+            <select
+              className="input"
+              value={centerId}
+              onChange={(event) => {
+                setCenterId(event.target.value);
+                setLineId("");
+              }}
+            >
+              <option value="">All Centers</option>
+              {centerList.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-item">
+            Line ID
+            <select
+              className="input"
+              value={lineId}
+              onChange={(event) => setLineId(event.target.value)}
+            >
+              <option value="">All Lines</option>
+              {filteredLines.map((line) => (
+                <option key={line.id} value={line.id}>
+                  {line.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginBottom: "1rem" }}>
         <div className="module-card">

@@ -20,12 +20,26 @@ const DashboardCenter = () => {
 
   const { refreshMs, window } = useFilters();
   const lineState = useAsync(() => getLineStatus(), []);
-  const kpiState = useAsync(() => getKpi(window, 50), [window]);
-  const eventState = useAsync(() => getRecentEvents(50), []);
+  const kpiState = useAsync(
+    () => getKpi(window, 50, { center_id: centerNumericId || undefined }),
+    [window, centerNumericId]
+  );
+  const eventState = useAsync(
+    () => getRecentEvents(50, { center_id: centerNumericId || undefined }),
+    [centerNumericId]
+  );
 
   usePolling(lineState.run, refreshMs);
   usePolling(() => kpiState.run(), refreshMs);
   usePolling(eventState.run, refreshMs);
+
+  const centerLines = useMemo(
+    () =>
+      (lineState.data || []).filter(
+        (line) => !centerNumericId || line.center_id === centerNumericId
+      ),
+    [lineState.data, centerNumericId]
+  );
 
   const centerKpi = useMemo(
     () =>
@@ -75,7 +89,7 @@ const DashboardCenter = () => {
             <p className="error">Failed to load line status.</p>
           ) : (
             <ul className="placeholder-list">
-              {(lineState.data || []).map((line) => (
+              {centerLines.map((line) => (
                 <li key={line.line_id}>
                   line {line.line_id} | {line.current_status}
                 </li>

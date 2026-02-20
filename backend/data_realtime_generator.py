@@ -88,17 +88,41 @@ class RealtimeDataGenerator:
             self.center_sensor_map[center_id] = sensor_ids
         return self.center_sensor_map[center_id]
         
-    def generate_kpi_report(self, center_id: int, db_session: Session) -> KpiReport:
-        """KPI 리포트 생성"""
+    def _pick_kpi_window_end(self, bucket: str) -> datetime:
+        """최근 구간별로 분산된 window_end를 생성한다."""
+        now = datetime.utcnow()
+        if bucket == "5m":
+            minutes_ago = random.uniform(0, 5)
+        elif bucket == "1h":
+            minutes_ago = random.uniform(5, 60)
+        else:
+            minutes_ago = random.uniform(60, 24 * 60)
+        return now - timedelta(minutes=minutes_ago)
+
+    def _kpi_throughput_base(self, center_id: int, line_id: int) -> int:
+        """센터/라인별 편차를 주기 위한 기준 처리량."""
+        center_factor = (center_id % 100) + 1
+        line_factor = (line_id % 100) + 1
+        return 120 + (center_factor * 8) + (line_factor * 3)
+
+    def generate_kpi_report(self, center_id: int, db_session: Session, bucket: str) -> KpiReport:
+        """KPI 리포트 생성 (window 버킷별 분산)"""
         lines = db_session.query(Line).filter(Line.center_id == center_id).all()
-        
-        throughput = random.randint(100, 500)
-        
+        line_id = random.choice([l.id for l in lines]) if lines else self.line_ids[0]
+        base = self._kpi_throughput_base(center_id, line_id)
+
+        if bucket == "5m":
+            throughput = random.randint(base + 30, base + 120)
+        elif bucket == "1h":
+            throughput = random.randint(base + 80, base + 250)
+        else:
+            throughput = random.randint(base + 200, base + 500)
+
         kpi = KpiReport(
-            window_end=datetime.utcnow(),
+            window_end=self._pick_kpi_window_end(bucket),
             center_id=center_id,
             zone_id=random.choice(self.zone_ids),
-            line_id=random.choice([l.id for l in lines]) if lines else self.line_ids[0],
+            line_id=line_id,
             throughput_count=throughput,
             created_at=datetime.utcnow()
         )
@@ -646,10 +670,12 @@ class RealtimeDataGenerator:
                 
                 batch = []
                 
-                # 1. KPI Report (센터당 2-5개)
-                for _ in range(random.randint(2, 5)):
-                    kpi = self.generate_kpi_report(center_id, center_db)
-                    batch.append(kpi)
+                # 1. KPI Report (센터당 구간별 분산 생성)
+                kpi_buckets = ("5m", "1h", "24h")
+                for bucket in kpi_buckets:
+                    for _ in range(random.randint(2, 4)):
+                        kpi = self.generate_kpi_report(center_id, center_db, bucket)
+                        batch.append(kpi)
                 
                 # 2. Line Status (모든 라인)
                 for line_id in self.line_ids:

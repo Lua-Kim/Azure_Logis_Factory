@@ -17,6 +17,14 @@ from app.routers.metrics import router as metrics_router
 from app.routers.settings import router as settings_router
 from app.routers.performance import router as performance_router
 
+CENTER_DB_MAP = {
+    "100": "main",
+    "110": "0",
+    "120": "1",
+    "130": "2",
+    "140": "3"
+}
+
 # --- Lifespan 설정 ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -61,7 +69,7 @@ app.include_router(performance_router, prefix="/api")
 # --- WebSocket용 실시간 데이터 조회 함수 ---
 def _fetch_snapshot(center_id: Optional[str] = None, line_id: Optional[int] = None) -> dict:
     from sqlalchemy import desc
-    db_id = center_id if center_id else "main"
+    db_id = CENTER_DB_MAP.get(center_id, "main") if center_id else "main"
     db: Session = get_session(db_id)
     try:
         bind_url = db.get_bind().url
@@ -70,18 +78,24 @@ def _fetch_snapshot(center_id: Optional[str] = None, line_id: Optional[int] = No
         
         # 라인 상태
         line_query = db.query(Line)
+        if center_id:
+            line_query = line_query.filter(Line.center_id == int(center_id))
         if line_id:
             line_query = line_query.filter(Line.id == line_id)
         line_status = line_query.all()
 
         # KPI
         kpi_query = db.query(KpiReport)
+        if center_id:
+            kpi_query = kpi_query.filter(KpiReport.center_id == int(center_id))
         if line_id:
             kpi_query = kpi_query.filter(KpiReport.line_id == line_id)
         kpis = kpi_query.order_by(desc(KpiReport.window_end)).limit(10).all()
 
         # 병목
         bn_query = db.query(BottleneckEvent)
+        if center_id:
+            bn_query = bn_query.filter(BottleneckEvent.center_id == int(center_id))
         if line_id:
             bn_query = bn_query.filter(BottleneckEvent.line_id == line_id)
         bottlenecks = bn_query.order_by(desc(BottleneckEvent.occurred_at)).limit(5).all()

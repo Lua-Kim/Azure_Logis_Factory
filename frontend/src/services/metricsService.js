@@ -2,16 +2,16 @@ import { request } from "./apiClient.js";
 
 const getLineStatus = () => request("/api/line/status");
 
-const getKpi = (window = "5m", limit = 200) =>
-  request("/api/kpi", { params: { window, limit } });
+const getKpi = (window = "5m", limit = 200, { center_id, line_id } = {}) =>
+  request("/api/kpi", { params: { window, limit, center_id, line_id } });
 
 const getBottlenecks = ({ from_ts, to_ts, center_id, line_id, limit = 200 } = {}) =>
   request("/api/bottlenecks", {
     params: { from_ts, to_ts, center_id, line_id, limit }
   });
 
-const getRecentEvents = (limit = 100) =>
-  request("/api/events/recent", { params: { limit } });
+const getRecentEvents = (limit = 100, { center_id, line_id } = {}) =>
+  request("/api/events/recent", { params: { limit, center_id, line_id } });
 
 const getLineAnalytics = ({ line_id, granularity = "hour", start_ts, end_ts }) =>
   request("/api/line/analytics", {

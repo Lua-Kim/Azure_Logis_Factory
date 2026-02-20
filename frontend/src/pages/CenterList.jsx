@@ -13,7 +13,13 @@ const CenterList = () => {
     () => listCenters({ page, size }),
     [page, size]
   );
-  const kpiState = useAsync(() => getKpi("5m", 200), []);
+  const kpiState = useAsync(
+    () =>
+      selectedCenterId
+        ? getKpi("5m", 200, { center_id: selectedCenterId })
+        : Promise.resolve([]),
+    [selectedCenterId]
+  );
   const bottleneckState = useAsync(
     () =>
       selectedCenterId
@@ -29,13 +35,10 @@ const CenterList = () => {
   const selectedCenter = items.find(
     (center) => center.id === selectedCenterId
   );
-  const centerKpi = useMemo(() => {
-    const allKpi = kpiState.data || [];
-    if (!selectedCenterId) {
-      return [];
-    }
-    return allKpi.filter((item) => item.center_id === selectedCenterId);
-  }, [kpiState.data, selectedCenterId]);
+  const centerKpi = useMemo(
+    () => (kpiState.data || []),
+    [kpiState.data]
+  );
   const latestKpi = centerKpi[0];
   const throughputTotal = centerKpi.reduce(
     (sum, item) => sum + (item.throughput_count || 0),
